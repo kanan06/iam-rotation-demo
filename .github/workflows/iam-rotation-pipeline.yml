@@ -8,8 +8,30 @@ env:
   AWS_REGION: us-east-1
 
 jobs:
+  setup-oidc:
+    runs-on: ubuntu-latest
+    outputs:
+      aws-account-id: ${{ steps.get-account-id.outputs.account-id }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials using OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::160885290762:role/github-actions-oidc-role
+          aws-region: us-east-1
+
+      - name: Get AWS Account ID from CloudFormation
+        id: get-account-id
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "account-id=$ACCOUNT_ID" >> $GITHUB_OUTPUT
+          echo "AWS Account ID: $ACCOUNT_ID"
+
   fetch-credentials:
     runs-on: ubuntu-latest
+    needs: setup-oidc
     outputs:
       aws-access-key-id: ${{ steps.fetch-creds.outputs.aws-access-key-id }}
       aws-secret-access-key: ${{ steps.fetch-creds.outputs.aws-secret-access-key }}
@@ -30,7 +52,7 @@ jobs:
       - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-oidc-role
+          role-to-assume: arn:aws:iam::160885290762:role/github-actions-oidc-role
           aws-region: us-east-1
 
       - name: Fetch AWS Credentials from S3
