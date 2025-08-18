@@ -1,0 +1,233 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Multi-User IAM Key Rotation Demo - Simple Approach'
+
+Parameters:
+  DemoUserName1:
+    Type: String
+    Default: 'demo-sns-service'
+    Description: 'Name of the first demo user (SNS permissions)'
+  
+  DemoUserName2:
+    Type: String
+    Default: 'demo-s3-service'
+    Description: 'Name of the second demo user (S3 permissions)'
+  
+  PipelineName:
+    Type: String
+    Default: 'demo-deployment-pipeline'
+    Description: 'Name of the CodePipeline to trigger after rotation'
+
+Resources:
+  # S3 Bucket for configuration files
+  ConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'iam-rotation-multi-user-config-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOldConfigs
+            Status: Enabled
+            ExpirationInDays: 90
+
+  # KMS Key for encrypting secret keys
+  RotationConfigKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: 'KMS key for encrypting IAM secret keys in multi-user rotation'
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow Lambda to encrypt/decrypt
+            Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:DescribeKey
+            Resource: '*'
+          - Sid: Allow demo users to decrypt
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:user/${DemoUserName1}'
+                - !Sub 'arn:aws:iam::${AWS::AccountId}:user/${DemoUserName2}'
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+            Resource: '*'
+
+  # DynamoDB table for tracking rotation state
+  RotationStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: 'iam-rotation-multi-user-state'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: UserId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: UserId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: TTL
+        Enabled: true
+
+  # SNS Topic for notifications
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: 'iam-rotation-multi-user-notifications'
+      DisplayName: 'IAM Rotation Multi-User Notifications'
+
+  # SNS Topic for demo service 1
+  DemoTopic1:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: 'demo-sns-service-topic'
+      DisplayName: 'Demo SNS Service Topic'
+
+  # SNS Topic for demo service 2
+  DemoTopic2:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: 'demo-s3-service-topic'
+      DisplayName: 'Demo S3 Service Topic'
+
+  # IAM Role for Lambda function
+  RotationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: 'iam-rotation-multi-user-lambda-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: RotationPermissions
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:CreateAccessKey
+                  - iam:DeleteAccessKey
+                  - iam:ListAccessKeys
+                  - iam:UpdateAccessKey
+                  - iam:GetUser
+                Resource:
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:user/${DemoUserName1}'
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:user/${DemoUserName2}'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub 'arn:aws:s3:::${ConfigBucket}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: !Sub 'arn:aws:s3:::${ConfigBucket}'
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                Resource: !GetAtt RotationConfigKmsKey.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Query
+                  - dynamodb:Scan
+                Resource: !GetAtt RotationStateTable.Arn
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource:
+                  - !Ref NotificationTopic
+                  - !Ref DemoTopic1
+                  - !Ref DemoTopic2
+              - Effect: Allow
+                Action:
+                  - codepipeline:StartPipelineExecution
+                Resource: !Sub 'arn:aws:codepipeline:${AWS::Region}:${AWS::AccountId}:${PipelineName}'
+
+  # Lambda function for multi-user rotation
+  MultiUserRotationLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: 'iam-rotation-multi-user-demo'
+      Runtime: python3.9
+      Handler: multi-user-simple-lambda.lambda_handler
+      Role: !GetAtt RotationLambdaRole.Arn
+      Code:
+        ZipFile: |
+          # This will be replaced by actual deployment
+          def lambda_handler(event, context):
+              return {'statusCode': 200, 'body': 'Placeholder'}
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          DYNAMODB_TABLE: !Ref RotationStateTable
+          CONFIG_BUCKET: !Ref ConfigBucket
+          NOTIFICATION_TOPIC_ARN: !Ref NotificationTopic
+          DEMO_USER_NAME_1: !Ref DemoUserName1
+          DEMO_USER_NAME_2: !Ref DemoUserName2
+          KMS_KEY_ID: !Ref RotationConfigKmsKey
+
+Outputs:
+  ConfigBucket:
+    Description: S3 bucket name for configuration files
+    Value: !Ref ConfigBucket
+
+  RotationLambdaName:
+    Description: Name of the rotation Lambda function
+    Value: !Ref MultiUserRotationLambda
+
+  NotificationTopicArn:
+    Description: ARN of the notification SNS topic
+    Value: !Ref NotificationTopic
+
+  DemoTopic1Arn:
+    Description: ARN of the first demo SNS topic
+    Value: !Ref DemoTopic1
+
+  DemoTopic2Arn:
+    Description: ARN of the second demo SNS topic
+    Value: !Ref DemoTopic2
+
+  DemoUser1Name:
+    Description: Name of the first demo user
+    Value: !Ref DemoUserName1
+
+  DemoUser2Name:
+    Description: Name of the second demo user
+    Value: !Ref DemoUserName2
+
+  KmsKeyId:
+    Description: KMS Key ID for encryption
+    Value: !Ref RotationConfigKmsKey
