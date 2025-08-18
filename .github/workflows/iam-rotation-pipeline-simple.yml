@@ -3,6 +3,10 @@ name: IAM Key Rotation Pipeline (Simple)
 on:
   workflow_dispatch:
 
+permissions:
+  id-token: write
+  contents: read
+
 env:
   AWS_REGION: us-east-1
 
