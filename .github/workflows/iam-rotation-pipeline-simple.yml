@@ -51,11 +51,11 @@ jobs:
           aws sts get-caller-identity
           echo "✅ AWS access successful!"
 
-      - name: List S3 Buckets
+      - name: List Config Bucket Contents
         run: |
-          echo "Listing S3 buckets..."
-          aws s3 ls
-          echo "✅ S3 access successful!"
+          echo "Listing config bucket contents..."
+          aws s3 ls s3://iam-rotation-demo-config-160885290762/
+          echo "✅ Config bucket access successful!"
 
       - name: Check CloudFormation Stack
         run: |
