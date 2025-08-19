@@ -1,6 +1,8 @@
 name: IAM Key Rotation Pipeline
 
 on:
+  push:
+    branches: [clean-branch, main, master]
   workflow_dispatch:
     inputs:
       environment:
