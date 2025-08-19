@@ -93,21 +93,16 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials using OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ needs.fetch-credentials.outputs.aws-access-key-id }}
-          aws-secret-access-key: ${{ needs.fetch-credentials.outputs.aws-secret-access-key }}
-          aws-region: ${{ needs.fetch-credentials.outputs.aws-region }}
+          role-to-assume: arn:aws:iam::160885290762:role/github-actions-oidc-role
+          aws-region: us-east-1
 
       - name: Run Health Check
         id: health-check
         run: |
           python3 scripts/health-check.py
-        env:
-          AWS_ACCESS_KEY_ID: ${{ needs.fetch-credentials.outputs.aws-access-key-id }}
-          AWS_SECRET_ACCESS_KEY: ${{ needs.fetch-credentials.outputs.aws-secret-access-key }}
-          AWS_REGION: ${{ needs.fetch-credentials.outputs.aws-region }}
 
       - name: Health Check Results
         run: |

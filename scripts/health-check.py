@@ -274,10 +274,8 @@ def main():
     print("🚀 Starting Health Check Process")
     print(f"⏰ Timestamp: {datetime.now().isoformat()}")
     
-    # Check if AWS credentials are available
-    if not (os.getenv('AWS_ACCESS_KEY_ID') and os.getenv('AWS_SECRET_ACCESS_KEY')):
-        print("❌ AWS credentials not found in environment")
-        sys.exit(1)
+    # AWS credentials will be configured by the GitHub Actions workflow
+    # No need to check environment variables
     
     # Run health checks
     health_result = run_health_checks()
