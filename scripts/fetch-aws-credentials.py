@@ -101,10 +101,11 @@ def fetch_credentials_from_s3(config_file='env1.env'):
             print(f"🔐 Secret Access Key: {aws_secret_access_key[:10]}...")
             print(f"🌍 Region: {aws_region}")
             
-            # Set GitHub Actions outputs
-            print(f"::set-output name=aws-access-key-id::{aws_access_key_id}")
-            print(f"::set-output name=aws-secret-access-key::{aws_secret_access_key}")
-            print(f"::set-output name=aws-region::{aws_region}")
+            # Set GitHub Actions outputs (new syntax)
+            with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
+                f.write(f"aws-access-key-id={aws_access_key_id}\n")
+                f.write(f"aws-secret-access-key={aws_secret_access_key}\n")
+                f.write(f"aws-region={aws_region}\n")
             
             return {
                 'AWS_ACCESS_KEY_ID': aws_access_key_id,
