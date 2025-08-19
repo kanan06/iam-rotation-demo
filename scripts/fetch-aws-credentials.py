@@ -78,11 +78,26 @@ def fetch_credentials_from_s3(config_file='env1.env'):
         
         print(f"📝 Found {len(env_vars)} environment variables")
         
-        # Extract AWS credentials
+        # Extract AWS credentials (handle user-specific credentials)
         credentials = {}
+        user_credentials = {}
+        
         for key, value in env_vars.items():
             if key.startswith('AWS_'):
                 credentials[key] = value
+                # Check for user-specific credentials
+                if 'USER1' in key:
+                    user_credentials['USER1'] = user_credentials.get('USER1', {})
+                    if 'ACCESS_KEY_ID' in key:
+                        user_credentials['USER1']['AWS_ACCESS_KEY_ID'] = value
+                    elif 'SECRET_ACCESS_KEY' in key:
+                        user_credentials['USER1']['AWS_SECRET_ACCESS_KEY'] = value
+                elif 'USER2' in key:
+                    user_credentials['USER2'] = user_credentials.get('USER2', {})
+                    if 'ACCESS_KEY_ID' in key:
+                        user_credentials['USER2']['AWS_ACCESS_KEY_ID'] = value
+                    elif 'SECRET_ACCESS_KEY' in key:
+                        user_credentials['USER2']['AWS_SECRET_ACCESS_KEY'] = value
         
         if not credentials:
             print("⚠️ No AWS credentials found in the config file")
@@ -90,10 +105,25 @@ def fetch_credentials_from_s3(config_file='env1.env'):
         
         print(f"🔑 Found {len(credentials)} AWS credential variables")
         
-        # Set GitHub Actions outputs
-        aws_access_key_id = credentials.get('AWS_ACCESS_KEY_ID')
-        aws_secret_access_key = credentials.get('AWS_SECRET_ACCESS_KEY')
+        # Use USER1 credentials as default (or first available user)
+        aws_access_key_id = None
+        aws_secret_access_key = None
         aws_region = credentials.get('AWS_REGION', 'us-east-1')
+        
+        # Try to get USER1 credentials first
+        if 'USER1' in user_credentials:
+            user1_creds = user_credentials['USER1']
+            if 'AWS_ACCESS_KEY_ID' in user1_creds and 'AWS_SECRET_ACCESS_KEY' in user1_creds:
+                aws_access_key_id = user1_creds['AWS_ACCESS_KEY_ID']
+                aws_secret_access_key = user1_creds['AWS_SECRET_ACCESS_KEY']
+                print("✅ Using USER1 credentials")
+        # Fallback to USER2 if USER1 not available
+        elif 'USER2' in user_credentials:
+            user2_creds = user_credentials['USER2']
+            if 'AWS_ACCESS_KEY_ID' in user2_creds and 'AWS_SECRET_ACCESS_KEY' in user2_creds:
+                aws_access_key_id = user2_creds['AWS_ACCESS_KEY_ID']
+                aws_secret_access_key = user2_creds['AWS_SECRET_ACCESS_KEY']
+                print("✅ Using USER2 credentials")
         
         if aws_access_key_id and aws_secret_access_key:
             print("✅ Successfully extracted AWS credentials")
@@ -114,6 +144,7 @@ def fetch_credentials_from_s3(config_file='env1.env'):
             }
         else:
             print("❌ Missing required AWS credentials")
+            print(f"Available users: {list(user_credentials.keys())}")
             return None
             
     except Exception as e:
