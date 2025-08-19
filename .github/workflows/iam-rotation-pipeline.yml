@@ -1,6 +1,19 @@
 name: IAM Key Rotation Pipeline
 
 on:
+  push:
+    branches: [clean-branch, main, master]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'demo'
+        type: choice
+        options:
+        - demo
+        - staging
+        - production
   repository_dispatch:
     types: [iam-rotation-triggered]
 

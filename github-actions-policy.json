@@ -1,0 +1,49 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::iam-rotation-demo-config-160885290762",
+        "arn:aws:s3:::iam-rotation-demo-config-160885290762/*",
+        "arn:aws:s3:::iam-rotation-demo-app-160885290762",
+        "arn:aws:s3:::iam-rotation-demo-app-160885290762/*"
+      ],
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      "Resource": "arn:aws:kms:us-east-1:160885290762:key/43710300-0078-47e4-b967-55a4672b5b03",
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "cloudformation:DescribeStacks",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:UpdateItem",
+        "dynamodb:Scan",
+        "sns:Publish",
+        "lambda:InvokeFunction",
+        "lambda:GetFunction"
+      ],
+      "Resource": "*",
+      "Effect": "Allow"
+    },
+    {
+      "Action": [
+        "logs:DescribeLogGroups",
+        "logs:FilterLogEvents"
+      ],
+      "Resource": "*",
+      "Effect": "Allow"
+    }
+  ]
+}
