@@ -254,10 +254,11 @@ def run_health_checks():
         status_icon = "✅" if result['passed'] else "❌"
         print(f"{status_icon} {result['check']}: {result['message']}")
     
-    # Set GitHub Actions outputs
-    print(f"::set-output name=score::{health_score:.1f}")
-    print(f"::set-output name=status::{status}")
-    print(f"::set-output name=rollback::{str(rollback_needed).lower()}")
+    # Set GitHub Actions outputs (new syntax)
+    with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
+        f.write(f"score={health_score:.1f}\n")
+        f.write(f"status={status}\n")
+        f.write(f"rollback={str(rollback_needed).lower()}\n")
     
     return {
         'status': status,
