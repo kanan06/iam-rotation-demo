@@ -1,0 +1,42 @@
+[
+    {
+        "OutputKey": "DemoUser2Name",
+        "OutputValue": "demo-s3-service",
+        "Description": "Name of the second demo user"
+    },
+    {
+        "OutputKey": "DemoTopic2Arn",
+        "OutputValue": "arn:aws:sns:us-east-1:160885290762:demo-s3-service-topic",
+        "Description": "ARN of the second demo SNS topic"
+    },
+    {
+        "OutputKey": "RotationLambdaName",
+        "OutputValue": "iam-rotation-multi-user-demo",
+        "Description": "Name of the rotation Lambda function"
+    },
+    {
+        "OutputKey": "KmsKeyId",
+        "OutputValue": "b4970765-9769-43f5-bea2-84dc4c21d0b5",
+        "Description": "KMS Key ID for encryption"
+    },
+    {
+        "OutputKey": "ConfigBucket",
+        "OutputValue": "iam-rotation-multi-user-config-160885290762",
+        "Description": "S3 bucket name for configuration files"
+    },
+    {
+        "OutputKey": "DemoTopic1Arn",
+        "OutputValue": "arn:aws:sns:us-east-1:160885290762:demo-sns-service-topic",
+        "Description": "ARN of the first demo SNS topic"
+    },
+    {
+        "OutputKey": "NotificationTopicArn",
+        "OutputValue": "arn:aws:sns:us-east-1:160885290762:iam-rotation-multi-user-notifications",
+        "Description": "ARN of the notification SNS topic"
+    },
+    {
+        "OutputKey": "DemoUser1Name",
+        "OutputValue": "demo-sns-service",
+        "Description": "Name of the first demo user"
+    }
+]

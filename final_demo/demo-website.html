@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAM Key Rotation Demo - Success</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 40px;
+            max-width: 800px;
+            text-align: center;
+        }
+        .success-icon {
+            font-size: 80px;
+            color: #4CAF50;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        .subtitle {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 30px;
+        }
+        .rotation-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .rotation-info h3 {
+            color: #333;
+            margin-top: 0;
+        }
+        .user-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .user-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+        }
+        .user-card.success {
+            border-color: #4CAF50;
+            background: #f1f8e9;
+        }
+        .user-name {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .access-key {
+            font-family: monospace;
+            font-size: 0.8em;
+            color: #666;
+            word-break: break-all;
+        }
+        .timestamp {
+            color: #999;
+            font-size: 0.9em;
+            margin-top: 30px;
+        }
+        .pipeline-status {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .pipeline-status h3 {
+            color: #1976d2;
+            margin-top: 0;
+        }
+        .step {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+        }
+        .step-icon {
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+        .step.success .step-icon {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">🎉</div>
+        <h1>IAM Key Rotation Successful!</h1>
+        <p class="subtitle">All demo users have been rotated and the pipeline has been deployed successfully.</p>
+        
+        <div class="rotation-info">
+            <h3>📊 Rotation Summary</h3>
+            <div class="user-list">
+                <div class="user-card success">
+                    <div class="user-name">demo-user-1</div>
+                    <div class="access-key">AKIASK5MCW4FOQOETI4C</div>
+                    <div style="color: #4CAF50; font-size: 0.9em;">✅ Rotated</div>
+                </div>
+                <div class="user-card success">
+                    <div class="user-name">demo-user-2</div>
+                    <div class="access-key">AKIASK5MCW4FPJY4BAPX</div>
+                    <div style="color: #4CAF50; font-size: 0.9em;">✅ Rotated</div>
+                </div>
+                <div class="user-card success">
+                    <div class="user-name">demo-user-3</div>
+                    <div class="access-key">AKIASK5MCW4FIPG3655S</div>
+                    <div style="color: #4CAF50; font-size: 0.9em;">✅ Rotated</div>
+                </div>
+                <div class="user-card success">
+                    <div class="user-name">demo-user-4</div>
+                    <div class="access-key">AKIASK5MCW4FNUOW6BNK</div>
+                    <div style="color: #4CAF50; font-size: 0.9em;">✅ Rotated</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="pipeline-status">
+            <h3>🚀 Pipeline Execution Status</h3>
+            <div class="step success">
+                <div class="step-icon">🔐</div>
+                <div>OIDC Authentication with AWS</div>
+            </div>
+            <div class="step success">
+                <div class="step-icon">📥</div>
+                <div>Fetch encrypted credentials from S3</div>
+            </div>
+            <div class="step success">
+                <div class="step-icon">🔓</div>
+                <div>Decrypt credentials using KMS</div>
+            </div>
+            <div class="step success">
+                <div class="step-icon">🏥</div>
+                <div>Run health checks with new credentials</div>
+            </div>
+            <div class="step success">
+                <div class="step-icon">🌐</div>
+                <div>Deploy demo website to S3</div>
+            </div>
+            <div class="step success">
+                <div class="step-icon">📧</div>
+                <div>Send success notifications</div>
+            </div>
+        </div>
+
+        <div class="timestamp">
+            <strong>Deployment Time:</strong> <span id="timestamp"></span><br>
+            <strong>Rotation Policy:</strong> 7-day automatic rotation<br>
+            <strong>Health Check:</strong> All services verified<br>
+            <strong>Security:</strong> OIDC authentication, KMS encryption
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+    </script>
+</body>
+</html>

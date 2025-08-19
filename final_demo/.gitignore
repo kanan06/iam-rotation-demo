@@ -1,0 +1,38 @@
+# Sensitive files
+*.env
+*.env.encrypted
+*.env.metadata
+*.key
+*.pem
+
+# AWS credentials
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+
+# Temporary files
+/tmp/
+*.tmp
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

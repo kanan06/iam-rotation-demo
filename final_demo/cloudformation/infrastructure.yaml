@@ -1,0 +1,361 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Complete IAM Key Rotation Demo Infrastructure with OIDC, DynamoDB, KMS, and GitHub Actions Pipeline'
+
+Parameters:
+  DemoUserName1:
+    Type: String
+    Default: demo-user-1
+    Description: Name of the first IAM user for demo
+  DemoUserName2:
+    Type: String
+    Default: demo-user-2
+    Description: Name of the second IAM user for demo
+  DemoUserName3:
+    Type: String
+    Default: demo-user-3
+    Description: Name of the third IAM user for demo
+  DemoUserName4:
+    Type: String
+    Default: demo-user-4
+    Description: Name of the fourth IAM user for demo
+
+Resources:
+  # DynamoDB table for storing rotation state
+  RotationStateTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: iam-rotation-state
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: UserId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: UserId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: TTL
+        Enabled: true
+
+  # S3 bucket for storing environment configuration files
+  ConfigBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "iam-rotation-demo-config-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # S3 bucket for demo application artifacts
+  DemoAppBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "iam-rotation-demo-app-${AWS::AccountId}"
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # KMS key for encrypting secrets in the config files
+  RotationConfigKmsKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: KMS key for encrypting demo service secret values in S3-stored config
+      KeyPolicy:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowAccountRoot
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:aws:iam::${AWS::AccountId}:root
+            Action: 'kms:*'
+            Resource: '*'
+      Enabled: true
+      KeySpec: SYMMETRIC_DEFAULT
+      KeyUsage: ENCRYPT_DECRYPT
+
+  RotationConfigKmsAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/iam-rotation-config
+      TargetKeyId: !Ref RotationConfigKmsKey
+
+  # SNS topic for notifications
+  NotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: iam-rotation-notifications
+      DisplayName: IAM Key Rotation Notifications
+
+  # IAM role for the rotation Lambda function
+  RotationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: iam-rotation-lambda-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: IAMRotationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:CreateAccessKey
+                  - iam:DeleteAccessKey
+                  - iam:UpdateAccessKey
+                  - iam:ListAccessKeys
+                  - iam:GetUser
+                  - iam:ListUsers
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::iam-rotation-demo-config-${AWS::AccountId}"
+                  - !Sub "arn:aws:s3:::iam-rotation-demo-config-${AWS::AccountId}/*"
+              - Effect: Allow
+                Action:
+                  - kms:Encrypt
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                Resource: !GetAtt RotationConfigKmsKey.Arn
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Scan
+                Resource: !GetAtt RotationStateTable.Arn
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref NotificationTopic
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                Resource: '*'
+
+  # Lambda function for IAM key rotation
+  RotationLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: iam-rotation-function
+      Runtime: python3.9
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt RotationLambdaRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          CONFIG_BUCKET: !Ref ConfigBucket
+          KMS_KEY_ID: !Ref RotationConfigKmsKey
+          DYNAMODB_TABLE: !Ref RotationStateTable
+          SNS_TOPIC_ARN: !Ref NotificationTopic
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          import base64
+          import requests
+          from datetime import datetime, timedelta
+          from botocore.exceptions import ClientError
+          
+          def lambda_handler(event, context):
+              return {"statusCode": 200, "body": "Lambda function placeholder - will be updated with full implementation"}
+
+  # CloudWatch Log Group for Lambda
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${RotationLambdaFunction}"
+      RetentionInDays: 14
+
+  # IAM users for demo
+  DemoUser1:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref DemoUserName1
+
+  DemoUser2:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref DemoUserName2
+
+  DemoUser3:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref DemoUserName3
+
+  DemoUser4:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: !Ref DemoUserName4
+
+  # IAM policy for demo users
+  DemoUserPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: DemoUserPolicy
+      Users:
+        - !Ref DemoUser1
+        - !Ref DemoUser2
+        - !Ref DemoUser3
+        - !Ref DemoUser4
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !Sub "arn:aws:s3:::iam-rotation-demo-app-${AWS::AccountId}"
+              - !Sub "arn:aws:s3:::iam-rotation-demo-app-${AWS::AccountId}/*"
+          - Effect: Allow
+            Action:
+              - sns:Publish
+            Resource: !Ref NotificationTopic
+
+  # OIDC Identity Provider for GitHub Actions
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  # IAM Role for GitHub Actions with OIDC
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: github-actions-oidc-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOIDCProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                'token.actions.githubusercontent.com:aud': sts.amazonaws.com
+              StringLike:
+                'token.actions.githubusercontent.com:sub': 'repo:*:*'
+      Policies:
+        - PolicyName: GitHubActionsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub "arn:aws:s3:::iam-rotation-demo-config-${AWS::AccountId}"
+                  - !Sub "arn:aws:s3:::iam-rotation-demo-config-${AWS::AccountId}/*"
+                  - !Sub "arn:aws:s3:::iam-rotation-demo-app-${AWS::AccountId}"
+                  - !Sub "arn:aws:s3:::iam-rotation-demo-app-${AWS::AccountId}/*"
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:DescribeKey
+                Resource: !GetAtt RotationConfigKmsKey.Arn
+              - Effect: Allow
+                Action:
+                  - cloudformation:DescribeStacks
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:Scan
+                  - sns:Publish
+                  - lambda:InvokeFunction
+                  - lambda:GetFunction
+                Resource: '*'
+              - Effect: Allow
+                Action:
+                  - logs:DescribeLogGroups
+                  - logs:FilterLogEvents
+                Resource: '*'
+
+Outputs:
+  ConfigBucket:
+    Description: S3 bucket for storing encrypted configuration files
+    Value: !Ref ConfigBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-ConfigBucket"
+
+  DemoAppBucket:
+    Description: S3 bucket for demo application
+    Value: !Ref DemoAppBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-DemoAppBucket"
+
+  KmsKeyId:
+    Description: KMS key ID for encrypting configuration
+    Value: !Ref RotationConfigKmsKey
+    Export:
+      Name: !Sub "${AWS::StackName}-KmsKeyId"
+
+  NotificationTopicArn:
+    Description: SNS topic ARN for notifications
+    Value: !Ref NotificationTopic
+    Export:
+      Name: !Sub "${AWS::StackName}-NotificationTopicArn"
+
+  DynamoDBTable:
+    Description: DynamoDB table for rotation state
+    Value: !Ref RotationStateTable
+    Export:
+      Name: !Sub "${AWS::StackName}-DynamoDBTable"
+
+  LambdaFunctionName:
+    Description: Lambda function name for IAM rotation
+    Value: !Ref RotationLambdaFunction
+    Export:
+      Name: !Sub "${AWS::StackName}-LambdaFunctionName"
+
+  GitHubActionsRoleArn:
+    Description: IAM role ARN for GitHub Actions OIDC
+    Value: !GetAtt GitHubActionsRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-GitHubActionsRoleArn"
+
+  OIDCProviderArn:
+    Description: OIDC provider ARN for GitHub Actions
+    Value: !Ref GitHubOIDCProvider
+    Export:
+      Name: !Sub "${AWS::StackName}-OIDCProviderArn"
+
+  DemoUsers:
+    Description: Demo IAM users created
+    Value: !Sub |
+      User1: ${DemoUser1}
+      User2: ${DemoUser2}
+      User3: ${DemoUser3}
+      User4: ${DemoUser4}
+    Export:
+      Name: !Sub "${AWS::StackName}-DemoUsers"
